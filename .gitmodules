@@ -1,3 +1,6 @@
 [submodule "Editor/imgui"]
 	path = Editor/imgui
 	url = git@github.com:ocornut/imgui.git
+[submodule "Editor/json"]
+	path = Editor/json
+	url = git@github.com:nlohmann/json.git

@@ -6,7 +6,7 @@ This tool allows users to describe an electrostatics or magnetostatics problem b
 
 ## Configuration Editor
 
-The editor is a C++ program using ImGui (MIT licensed) to provide an interface for easily constructing an electro- or magnetostatics problem.
+The editor is a C++ program using [ImGui](https://github.com/ocornut/imgui) (MIT licensed) to provide an interface for easily constructing an electro- or magnetostatics problem. The configuration can be read from or written to disk in JSON format for the visualizer to read using [json by nlohmann](https://github.com/nlohmann/json) (MIT licensed).
 
 ## Visualizer
 

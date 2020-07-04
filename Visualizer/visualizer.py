@@ -21,7 +21,7 @@ import json
 def complete_config(config):
 	# Default plot margins
 	if "plot-margins" not in config:
-		config["plot-margins"] = {"0": 5, "1": 5, "2": 5}
+		config["plot-margins"] = [5, 5, 5]
 	# Plot both fields by default
 	for field in ["b-field", "e-field"]:
 		if "plot" not in config[field]:
@@ -52,8 +52,8 @@ def visualize_fields(config):
 			axes.append([config["plane"]["coordinate"]])
 		else:
 			x_min, x_max = config["plot-bounds"]["min"][i], config["plot-bounds"]["max"][i]
-			x_min -= config["plot-margins"][str(i)]
-			x_max += config["plot-margins"][str(i)]
+			x_min -= config["plot-margins"][i]
+			x_max += config["plot-margins"][i]
 			axis = np.linspace(x_min, x_max, config["resolution"] * (x_max - x_min))
 			axes.append(axis)
 	space = np.array(np.meshgrid(*axes))

@@ -20,9 +20,51 @@ void glfwErrorCallback(int error, const char* description) {
 }
 
 void readParameters(const char* filename) {
+	nlohmann::json params;
+	std::ifstream ifs(filename);
+	ifs >> params;
+	ifs.close();
+
+	std::vector<float> margins = params["plot-margins"].get<std::vector<float>>();
+	std::copy(margins.begin(), margins.end(), plotMargins);
+	plotEField = params["e-field"]["plot"];
+	plotBField = params["b-field"]["plot"];
+	planeAxis = params["plane"]["axis"];
+	planeCoordinate = params["plane"]["coordinate"];
+	showPlots = params["show"];
+	if (params.contains("plot-bounds")) {
+		std::vector<float> minBounds = params["plot-bounds"]["min"].get<std::vector<float>>();
+		std::copy(minBounds.begin(), minBounds.end(), plotBounds[0]);
+		std::vector<float> maxBounds = params["plot-bounds"]["max"].get<std::vector<float>>();
+		std::copy(maxBounds.begin(), maxBounds.end(), plotBounds[1]);
+		inferPlotBounds = false;
+	} else {
+		inferPlotBounds = true;
+	}
+	resolution = params["resolution"];
 }
 
 void writeParameters(const char* filename) {
+	nlohmann::json params = {
+		{"plot-margins", plotMargins},
+		{"e-field", {{"plot", plotEField}}},
+		{"b-field", {{"plot", plotBField}}},
+		{"plane", {
+			{"axis", planeAxis},
+			{"coordinate", planeCoordinate}}
+		},
+		{"show", showPlots},
+		{"resolution", resolution}
+	};
+	if (!inferPlotBounds) {
+		params["plot-bounds"] = {
+			{"min", plotBounds[0]},
+			{"max", plotBounds[1]}
+		};
+	}
+	std::ofstream ofs(filename);
+	ofs << params.dump(4);
+	ofs.close();
 }
 
 int main() {
@@ -83,7 +125,7 @@ int main() {
 				ImGui::SameLine();
 				ImGui::RadioButton("YZ", &planeAxis, 0);
 
-				ImGui::Text("Coordinate on remaining axis");
+				ImGui::Text("Coordinate on nonplanar axis");
 				ImGui::SameLine();
 				ImGui::InputFloat("##ZCoord", &planeCoordinate);
 			}

@@ -29,6 +29,8 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+#include "json.hpp"
+
 float plotMargins[] = {5, 5, 5};
 
 bool plotEField = true;
