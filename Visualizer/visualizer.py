@@ -46,7 +46,6 @@ def complete_config(config):
 
 def visualize_fields(config):
 	config = complete_config(config)
-	e_field, b_field = np.empty((0,0)), np.empty((0,0))
 	axes = []
 	for i in range(3):
 		if i == config["plane"]["axis"]:
@@ -63,6 +62,7 @@ def visualize_fields(config):
 	plotted_axes = [0,1,2]
 	plotted_axes.pop(config["plane"]["axis"])
 	ax1, ax2 = plotted_axes
+	e_field, b_field = np.zeros_like(space), np.zeros_like(space)
 
 	if "charges" in config:
 		charges = np.array(config["charges"])
@@ -71,13 +71,13 @@ def visualize_fields(config):
 			xy = (charge[1 + ax1], charge[1 + ax2])
 			plt.plot(*xy, 'ro')
 			plt.annotate(f"{charge[0]} C", xy=xy, xytext=(10,5), ha='right', textcoords='offset points')
-		def efield(x):
+		def efield_charges(x):
 			E = np.zeros_like(x)
 			for charge in charges:
 				s = (x.T - charge[1:]).T
 				E += charge[0] * s / np.linalg.norm(s, axis=0) ** 3
 			return E
-		e_field = efield(space)
+		e_field += efield_charges(space)
 
 	for field_name, field in zip(["e", "b"], [e_field, b_field]):
 		if config[f"{field_name}-field"]["plot"]:
