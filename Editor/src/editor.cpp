@@ -26,7 +26,7 @@ void readParameters(const char* filename) {
 	ifs.close();
 
 	std::vector<float> margins = params["plot-margins"].get<std::vector<float>>();
-	std::copy(margins.begin(), margins.end(), plotMargins);
+	std::copy_n(margins.begin(), 3, plotMargins.begin());
 	plotEField = params["e-field"]["plot"];
 	plotBField = params["b-field"]["plot"];
 	planeAxis = params["plane"]["axis"];
@@ -34,12 +34,21 @@ void readParameters(const char* filename) {
 	showPlots = params["show"];
 	if (params.contains("plot-bounds")) {
 		std::vector<float> minBounds = params["plot-bounds"]["min"].get<std::vector<float>>();
-		std::copy(minBounds.begin(), minBounds.end(), plotBounds[0]);
+		std::copy_n(minBounds.begin(), 3, plotBounds.min.begin());
 		std::vector<float> maxBounds = params["plot-bounds"]["max"].get<std::vector<float>>();
-		std::copy(maxBounds.begin(), maxBounds.end(), plotBounds[1]);
+		std::copy_n(maxBounds.begin(), 3, plotBounds.max.begin());
 		inferPlotBounds = false;
 	} else {
 		inferPlotBounds = true;
+	}
+	if (params.contains("charges")) {
+		DVecF jsonCharges = params["charges"].get<DVecF>();
+		charges.clear();
+		for (auto it : jsonCharges) {
+			Vec4 charge;
+			std::copy_n(it.begin(), 4, charge.begin());
+			charges.push_back(charge);
+		}
 	}
 	resolution = params["resolution"];
 }
@@ -58,9 +67,12 @@ void writeParameters(const char* filename) {
 	};
 	if (!inferPlotBounds) {
 		params["plot-bounds"] = {
-			{"min", plotBounds[0]},
-			{"max", plotBounds[1]}
+			{"min", plotBounds.min},
+			{"max", plotBounds.max}
 		};
+	}
+	if (charges.size() > 0) {
+		params["charges"] = charges;
 	}
 	std::ofstream ofs(filename);
 	ofs << params.dump(4);
@@ -115,7 +127,25 @@ int main() {
 
 		if (ImGui::Begin("Editor")) {
 			if (ImGui::CollapsingHeader("Electrostatics")) {
-				//
+				if (ImGui::Button("Add charge")) {
+					std::array<float, 4> charge = {0,0,0,0};
+					charges.push_back(charge);
+				}
+				int i = 0;
+				char buf[20];
+				for (auto it = charges.begin(); it != charges.end();) {
+					sprintf(buf, "##Q%d", i);
+					ImGui::Text("Charge (q, x, y, z)");
+					ImGui::InputFloat4(buf, it->data(), "%g", 0);
+					ImGui::SameLine();
+					sprintf(buf, "Delete charge##Del%d", i);
+					if (ImGui::Button(buf)) {
+						charges.erase(it);
+					} else {
+						it++;
+					}
+					i++;
+				}
 			}
 			if (ImGui::CollapsingHeader("Plane of interest")) {
 				ImGui::Text("Plot fields in which plane?");
@@ -134,13 +164,13 @@ int main() {
 				ImGui::Checkbox("Plot magnetic field", &plotBField);
 				ImGui::Checkbox("Show plots after saving", &showPlots);
 				ImGui::Text("Plot margins (X, Y, Z)");
-				ImGui::InputFloat3("##PlotMargins", plotMargins, "%g", 0);
+				ImGui::InputFloat3("##PlotMargins", plotMargins.data(), "%g", 0);
 				ImGui::Checkbox("Infer plot bounds", &inferPlotBounds);
 				if (!inferPlotBounds) {
 					ImGui::Text("Plot bounds (minimum X, Y, Z)");
-					ImGui::InputFloat3("##MinBounds", plotBounds[0], "%g", 0);
+					ImGui::InputFloat3("##MinBounds", plotBounds.min.data(), "%g", 0);
 					ImGui::Text("Plot bounds (maximum X, Y, Z)");
-					ImGui::InputFloat3("##MaxBounds", plotBounds[1], "%g", 0);
+					ImGui::InputFloat3("##MaxBounds", plotBounds.max.data(), "%g", 0);
 				}
 				ImGui::Text("Plot resolution");
 				ImGui::SameLine();

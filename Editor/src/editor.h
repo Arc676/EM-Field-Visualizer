@@ -20,7 +20,6 @@
 #include <stdlib.h>
 
 #include <fstream>
-#include <string>
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -31,7 +30,12 @@
 
 #include "json.hpp"
 
-float plotMargins[] = {5, 5, 5};
+using Vec3 = std::array<float, 3>;
+using Vec4 = std::array<float, 4>;
+
+using DVecF = std::vector<std::vector<float>>;
+
+Vec3 plotMargins = {{5, 5, 5}};
 
 bool plotEField = true;
 bool plotBField = true;
@@ -42,10 +46,13 @@ float planeCoordinate = 0;
 bool showPlots = false;
 
 bool inferPlotBounds = true;
-float plotBounds[2][3] = {
-	{0,0,0}, {0,0,0}
-};
+struct PlotBounds {
+	Vec3 min = {0,0,0};
+	Vec3 max = {0,0,0};
+} plotBounds;
 
 int resolution = 100;
+
+std::vector<Vec4> charges;
 
 #endif
