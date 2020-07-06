@@ -22,6 +22,10 @@ void glfwErrorCallback(int error, const char* description) {
 void readParameters(const char* filename) {
 	nlohmann::json params;
 	std::ifstream ifs(filename);
+	if (!ifs.is_open()) {
+		sprintf(ioMessage, "Failed to open %s for reading", filename);
+		return;
+	}
 	ifs >> params;
 	ifs.close();
 
@@ -84,6 +88,9 @@ void readParameters(const char* filename) {
 				} else {
 					continue;
 				}
+				if (rho.contains("offset")) {
+					density.offset = rho["offset"].get<Vec3>();
+				}
 			} else {
 				std::string func = rho["func"];
 				if (func.length() < 100) {
@@ -95,9 +102,15 @@ void readParameters(const char* filename) {
 			chargeDensities.push_back(density);
 		}
 	}
+	sprintf(ioMessage, "Read configuration from %s", filename);
 }
 
 void writeParameters(const char* filename) {
+	std::ofstream ofs(filename);
+	if (!ofs.is_open()) {
+		sprintf(ioMessage, "Failed to open %s for writing", filename);
+		return;
+	}
 	colormap = std::string(colormapbuf);
 	nlohmann::json params = {
 		{"plot-margins", plotMargins},
@@ -130,6 +143,9 @@ void writeParameters(const char* filename) {
 				density["func"] = rho.preset;
 				density["var"] = rho.var;
 				density["value"] = rho.value;
+				if (rho.offset[0] != 0 || rho.offset[1] != 0 || rho.offset[2] != 0) {
+					density["offset"] = rho.offset;
+				}
 			} else {
 				density["func"] = rho.func;
 			}
@@ -137,9 +153,9 @@ void writeParameters(const char* filename) {
 		}
 		params["charge-densities"] = densities;
 	}
-	std::ofstream ofs(filename);
 	ofs << params.dump(4);
 	ofs.close();
+	sprintf(ioMessage, "Wrote configuration to %s", filename);
 }
 
 int main() {
@@ -218,6 +234,8 @@ int main() {
 					sprintf(buf, "Use preset function##Rho%d", i);
 					ImGui::Checkbox(buf, &(it->isPreset));
 					if (it->isPreset) {
+						sprintf(buf, "Scale##RhoScale%d", i);
+						ImGui::InputFloat(buf, &(it->scale));
 						sprintf(buf, "Preset##Rho%d", i);
 						ImGui::Combo(buf, &(it->preset), presetFunctions, PRESET_COUNT);
 						ImGui::Text("Variable (x, y, z, r, theta, phi, rc)");
@@ -228,6 +246,9 @@ int main() {
 						ImGui::SameLine();
 						sprintf(buf, "##RhoVal%d", i);
 						ImGui::InputFloat(buf, &(it->value));
+						ImGui::Text("Offset");
+						sprintf(buf, "##RhoOffset%d", i);
+						ImGui::InputFloat3(buf, it->offset.data(), "%g", 0);
 					} else {
 						ImGui::Text("rho(x,y,z/r,theta,phi/rc,phi,z) = ");
 						sprintf(buf, "##Rho%d", i);
@@ -285,6 +306,7 @@ int main() {
 				if (ImGui::Button("Save")) {
 					writeParameters(filename);
 				}
+				ImGui::Text(ioMessage);
 			}
 			if (ImGui::Button("Exit")) {
 				break;

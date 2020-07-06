@@ -35,6 +35,8 @@ using Vec4 = std::array<float, 4>;
 
 using DVecF = std::vector<std::vector<float>>;
 
+char ioMessage[255] = "Enter a filename to read or save";
+
 Vec3 plotMargins = {{5, 5, 5}};
 
 bool plotEField = true;
@@ -47,8 +49,8 @@ bool showPlots = false;
 
 bool inferPlotBounds = true;
 struct PlotBounds {
-	Vec3 min = {0,0,0};
-	Vec3 max = {0,0,0};
+	Vec3 min = {{0, 0, 0}};
+	Vec3 max = {{0, 0, 0}};
 } plotBounds;
 
 int resolution = 100;
@@ -66,6 +68,7 @@ struct ChargeDensityFunc {
 	};
 	char var[5] = "r";
 	float value = 1;
+	Vec3 offset = {{0, 0, 0}};
 };
 
 std::vector<ChargeDensityFunc> chargeDensities;

@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
+from scipy.integrate import tplquad as tpl_integrate
 import matplotlib.pyplot as plt
 import argparse
 import json
@@ -134,6 +135,11 @@ def visualize_fields(config):
 		ax1, ax2 = ax2, ax1
 		e_field = np.moveaxis(e_field, 2 - ax3, -1)
 		b_field = np.moveaxis(b_field, 2 - ax3, -1)
+	# Generate contour plot of overall charge density distribution
+	overall_charge_density = np.zeros_like(space[0])
+	for rho in list_charge_densities:
+		X, Y = space[ax1], space[ax2]
+		overall_charge_density += np.vectorize(rho)(z, Y, X)
 	for field_name, field in zip(["e", "b"], [e_field, b_field]):
 		config_name = f"{field_name}-field"
 		if config[config_name]["plot"]:
@@ -148,10 +154,7 @@ def visualize_fields(config):
 					plt.annotate(f"{charge[0]} C", xy=xy, xytext=(10,5), ha='right', textcoords='offset points')
 
 			# Plot charge densities
-			for rho in list_charge_densities:
-				X, Y = space[ax1], space[ax2]
-				density = np.vectorize(rho)(z, Y, X)
-				plt.contourf(axes[ax1], axes[ax2], density.T[0].T, cmap=plt.cm.Reds)
+			plt.contourf(axes[ax1], axes[ax2], overall_charge_density.T[0].T, cmap=plt.cm.Reds)
 
 			# Plot field
 			fx, fy = field[ax1].T[0].T, field[ax2].T[0].T

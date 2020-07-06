@@ -37,12 +37,17 @@ def get_variable(var):
 	elif var == "phi":
 		return lambda z, y, x: np.acos(x / norm(x, y))
 
-def delta(variable, value):
-	var = get_variable(variable)
+def offset_var(var, offset):
+	if offset != 0:
+		return lambda z, y, x: var(z + offset[2], y + offset[1], x + offset[0])
+	return var
+
+def delta(variable, value, offset):
+	var = offset_var(get_variable(variable), offset)
 	return lambda z, y, x: nl.norm(var(z, y, x) - value) < 0.01
 
-def heaviside(variable, value, reverse):
-	var = get_variable(variable)
+def heaviside(variable, value, offset, reverse):
+	var = offset_var(get_variable(variable), offset)
 	if reverse:
 		return lambda z, y, x: var(z, y, x) < value
 	else:
@@ -53,9 +58,10 @@ def get_preset(density_func):
 	func = density_func["func"]
 	var = density_func["var"]
 	val = density_func["value"]
+	offset = density_func.get("offset", 0)
 	if func == PRESET_DELTA:
-		d = delta(var, val)
+		d = delta(var, val, offset)
 		return lambda z, y, x: scale * d(z, y, x)
 	elif func in [PRESET_HEAVISIDE, PRESET_REVERSE_HEAVISIDE]:
-		h = heaviside(var, val, func == PRESET_REVERSE_HEAVISIDE)
+		h = heaviside(var, val, offset, func == PRESET_REVERSE_HEAVISIDE)
 		return lambda z, y, x: scale * h(z, y, x)
