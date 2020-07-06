@@ -32,7 +32,7 @@ Note that it is not possible to use a preset function to compare a combination o
 
 The Dirac delta function is zero everywhere except when its argument is zero. In the editor, a value can be specified such that the value of the function is zero except when the argument has that value. Due to the imprecision of floating point arithmetic, the delta function is implemented to check for equality within a tolerance of 0.01 and yield the value 1 if this condition is met.
 
-The Heaviside step function is zero when its argument is negative and one for zero and positive arguments. Here, it is implemented as `variable > value`. The inverse Heaviside function is implemented as the opposite: it yields 1 when `variable < value`. No tolerance is given.
+The Heaviside step function is zero when its argument is negative and one for zero and positive arguments. Here, it is implemented as `variable > value`. The reverse Heaviside function is implemented as the opposite: it yields 1 when `variable < value`. No tolerance is given.
 
 ### Custom Functions
 

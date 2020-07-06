@@ -25,13 +25,23 @@ void readParameters(const char* filename) {
 	ifs >> params;
 	ifs.close();
 
-	std::vector<float> margins = params["plot-margins"].get<std::vector<float>>();
-	std::copy_n(margins.begin(), 3, plotMargins.begin());
-	plotEField = params["e-field"]["plot"];
-	plotBField = params["b-field"]["plot"];
-	planeAxis = params["plane"]["axis"];
-	planeCoordinate = params["plane"]["coordinate"];
-	showPlots = params["show"];
+	if (params.contains("plot-margins")) {
+		std::vector<float> margins = params["plot-margins"].get<std::vector<float>>();
+		std::copy_n(margins.begin(), 3, plotMargins.begin());
+	}
+	if (params.contains("e-field") && params["e-field"].contains("plot")) {
+		plotEField = params["e-field"]["plot"];
+	}
+	if (params.contains("b-field") && params["b-field"].contains("plot")) {
+		plotBField = params["b-field"]["plot"];
+	}
+	if (params.contains("plane")) {
+		planeAxis = params["plane"]["axis"];
+		planeCoordinate = params["plane"]["coordinate"];
+	}
+	if (params.contains("show")) {
+		showPlots = params["show"];
+	}
 	if (params.contains("plot-bounds")) {
 		std::vector<float> minBounds = params["plot-bounds"]["min"].get<std::vector<float>>();
 		std::copy_n(minBounds.begin(), 3, plotBounds.min.begin());
@@ -41,19 +51,54 @@ void readParameters(const char* filename) {
 	} else {
 		inferPlotBounds = true;
 	}
+	charges.clear();
 	if (params.contains("charges")) {
 		DVecF jsonCharges = params["charges"].get<DVecF>();
-		charges.clear();
 		for (auto it : jsonCharges) {
 			Vec4 charge;
 			std::copy_n(it.begin(), 4, charge.begin());
 			charges.push_back(charge);
 		}
 	}
-	resolution = params["resolution"];
+	if (params.contains("resolution")) {
+		resolution = params["resolution"];
+	}
+	if (params.contains("colormap")) {
+		colormap = params["colormap"];
+		if (colormap.length() < 50) {
+			std::copy(colormap.begin(), colormap.end(), colormapbuf);
+		}
+	}
+	chargeDensities.clear();
+	if (params.contains("charge-densities")) {
+		for (auto rho : params["charge-densities"]) {
+			ChargeDensityFunc density;
+			density.isPreset = rho["preset"];
+			if (density.isPreset) {
+				density.scale = rho["scale"];
+				density.value = rho["value"];
+				density.preset = rho["func"];
+				std::string var = rho["var"];
+				if (var.length() < 5) {
+					std::copy(var.begin(), var.end(), density.var);
+				} else {
+					continue;
+				}
+			} else {
+				std::string func = rho["func"];
+				if (func.length() < 100) {
+					std::copy(func.begin(), func.end(), density.func);
+				} else {
+					continue;
+				}
+			}
+			chargeDensities.push_back(density);
+		}
+	}
 }
 
 void writeParameters(const char* filename) {
+	colormap = std::string(colormapbuf);
 	nlohmann::json params = {
 		{"plot-margins", plotMargins},
 		{"e-field", {{"plot", plotEField}}},
@@ -63,7 +108,8 @@ void writeParameters(const char* filename) {
 			{"coordinate", planeCoordinate}}
 		},
 		{"show", showPlots},
-		{"resolution", resolution}
+		{"resolution", resolution},
+		{"colormap", colormap}
 	};
 	if (!inferPlotBounds) {
 		params["plot-bounds"] = {
@@ -73,6 +119,23 @@ void writeParameters(const char* filename) {
 	}
 	if (charges.size() > 0) {
 		params["charges"] = charges;
+	}
+	if (chargeDensities.size() > 0) {
+		nlohmann::json densities;
+		for (auto rho : chargeDensities) {
+			nlohmann::json density;
+			density["preset"] = rho.isPreset;
+			if (rho.isPreset) {
+				density["scale"] = rho.scale;
+				density["func"] = rho.preset;
+				density["var"] = rho.var;
+				density["value"] = rho.value;
+			} else {
+				density["func"] = rho.func;
+			}
+			densities.push_back(density);
+		}
+		params["charge-densities"] = densities;
 	}
 	std::ofstream ofs(filename);
 	ofs << params.dump(4);
@@ -132,19 +195,51 @@ int main() {
 					charges.push_back(charge);
 				}
 				int i = 0;
-				char buf[20];
+				char buf[100];
 				for (auto it = charges.begin(); it != charges.end();) {
 					sprintf(buf, "##Q%d", i);
 					ImGui::Text("Charge (q, x, y, z)");
 					ImGui::InputFloat4(buf, it->data(), "%g", 0);
 					ImGui::SameLine();
-					sprintf(buf, "Delete charge##Del%d", i);
+					sprintf(buf, "Delete charge##DelQ%d", i);
 					if (ImGui::Button(buf)) {
 						charges.erase(it);
 					} else {
 						it++;
+						i++;
 					}
-					i++;
+				}
+				if (ImGui::Button("Add charge density function")) {
+					ChargeDensityFunc rho;
+					chargeDensities.push_back(rho);
+				}
+				i = 0;
+				for (auto it = chargeDensities.begin(); it != chargeDensities.end();) {
+					sprintf(buf, "Use preset function##Rho%d", i);
+					ImGui::Checkbox(buf, &(it->isPreset));
+					if (it->isPreset) {
+						sprintf(buf, "Preset##Rho%d", i);
+						ImGui::Combo(buf, &(it->preset), presetFunctions, PRESET_COUNT);
+						ImGui::Text("Variable (x, y, z, r, theta, phi, rc)");
+						ImGui::SameLine();
+						sprintf(buf, "##RhoVar%d", i);
+						ImGui::InputText(buf, it->var, 5, 0);
+						ImGui::Text("Value");
+						ImGui::SameLine();
+						sprintf(buf, "##RhoVal%d", i);
+						ImGui::InputFloat(buf, &(it->value));
+					} else {
+						ImGui::Text("rho(x,y,z/r,theta,phi/rc,phi,z) = ");
+						sprintf(buf, "##Rho%d", i);
+						ImGui::InputText(buf, it->func, 100, 0);
+					}
+					sprintf(buf, "Delete charge density function##DelRho%d", i);
+					if (ImGui::Button(buf)) {
+						chargeDensities.erase(it);
+					} else {
+						it++;
+						i++;
+					}
 				}
 			}
 			if (ImGui::CollapsingHeader("Plane of interest")) {
@@ -160,6 +255,7 @@ int main() {
 				ImGui::InputFloat("##ZCoord", &planeCoordinate);
 			}
 			if (ImGui::CollapsingHeader("Plot")) {
+				ImGui::InputText("Color Map", colormapbuf, 50, 0);
 				ImGui::Checkbox("Plot electric field", &plotEField);
 				ImGui::Checkbox("Plot magnetic field", &plotBField);
 				ImGui::Checkbox("Show plots after saving", &showPlots);

@@ -52,7 +52,27 @@ struct PlotBounds {
 } plotBounds;
 
 int resolution = 100;
+char colormapbuf[50] = "cool";
+std::string colormap;
 
 std::vector<Vec4> charges;
+
+struct ChargeDensityFunc {
+	bool isPreset = true;
+	float scale = 1;
+	union {
+		int preset = 0;
+		char func[100];
+	};
+	char var[5] = "r";
+	float value = 1;
+};
+
+std::vector<ChargeDensityFunc> chargeDensities;
+
+#define PRESET_COUNT 3
+const char* presetFunctions[] = {
+	"Delta (var == val)", "Heaviside (var > val)", "Reverse Heaviside (var < val)"
+};
 
 #endif

@@ -16,7 +16,7 @@ import numpy.linalg as nl
 
 PRESET_DELTA = 0
 PRESET_HEAVISIDE = 1
-PRESET_INVERSE_HEAVISIDE = 2
+PRESET_REVERSE_HEAVISIDE = 2
 
 def norm(*xi):
 	return nl.norm([*xi])
@@ -41,9 +41,9 @@ def delta(variable, value):
 	var = get_variable(variable)
 	return lambda z, y, x: nl.norm(var(z, y, x) - value) < 0.01
 
-def heaviside(variable, value, inverse):
+def heaviside(variable, value, reverse):
 	var = get_variable(variable)
-	if inverse:
+	if reverse:
 		return lambda z, y, x: var(z, y, x) < value
 	else:
 		return lambda z, y, x: var(z, y, x) > value
@@ -56,6 +56,6 @@ def get_preset(density_func):
 	if func == PRESET_DELTA:
 		d = delta(var, val)
 		return lambda z, y, x: scale * d(z, y, x)
-	elif func in [PRESET_HEAVISIDE, PRESET_INVERSE_HEAVISIDE]:
-		h = heaviside(var, val, func == PRESET_INVERSE_HEAVISIDE)
+	elif func in [PRESET_HEAVISIDE, PRESET_REVERSE_HEAVISIDE]:
+		h = heaviside(var, val, func == PRESET_REVERSE_HEAVISIDE)
 		return lambda z, y, x: scale * h(z, y, x)
