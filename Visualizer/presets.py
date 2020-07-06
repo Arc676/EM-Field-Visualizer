@@ -44,7 +44,7 @@ def offset_var(var, offset):
 
 def delta(variable, value, offset):
 	var = offset_var(get_variable(variable), offset)
-	return lambda z, y, x: nl.norm(var(z, y, x) - value) < 0.01
+	return lambda z, y, x: 100 if nl.norm(var(z, y, x) - value) < 0.01 else 0
 
 def heaviside(variable, value, offset, reverse):
 	var = offset_var(get_variable(variable), offset)

@@ -14,13 +14,14 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
-from scipy.integrate import tplquad as tpl_integrate
+from scipy.integrate import tplquad
 import matplotlib.pyplot as plt
 import argparse
 import json
 
 import evaluation as safe_eval
 import presets
+import simps3
 
 # Command line parameters
 output_files = {"e-field": None, "b-field": None}
@@ -130,16 +131,49 @@ def visualize_fields(config):
 			else:
 				rho = construct_function(eval_safety, density_func["func"])
 			list_charge_densities.append(rho)
+			def integrand(z, y, x, Xx, Xy, Xz, axis):
+				X = np.array([Xx, Xy, Xz])
+				Y = np.array([x, y, z])
+				v = X - Y
+				return rho(z, y, x) * v[axis] / (np.linalg.norm(v) ** 3 + 1e-6)
+			def grid_integral(f, x0, x1, y0, y1, z0, z1, *args):
+				return np.vectorize(
+					lambda z, y, x: tplquad(
+						f, x0, x1, y0, y1, z0, z1,
+						args=(z, y, x) + args,
+						epsabs=0.5
+					)[0] if rho(z, y, x) == 0 else 0
+				)
+			ax, ay, az = axes[0][0], axes[1][0], axes[2][0]
+			bx, by, bz = axes[0][-1], axes[1][-1], axes[2][-1]
+			if ax == bx:
+				ax, bx = ay, by
+			elif ay == by:
+				ay, by = ax, bx
+			elif az == bz:
+				az, bz = ax, bx
+			for axis in reversed(range(3)):
+				print(space.shape)
+				print(axis)
+				e_field[axis] += grid_integral(
+					integrand,
+					ax, bx, ay, by, az, bz,
+					axis
+				)(space[2], space[1], space[0])
+				print(e_field[axis])
+
+	# Determine overall charge density distribution
+	overall_charge_density = np.zeros_like(space[0])
+	for rho in list_charge_densities:
+		overall_charge_density += np.vectorize(rho)(space[2], space[1], space[0])
 
 	if ax3 != 2:
 		ax1, ax2 = ax2, ax1
 		e_field = np.moveaxis(e_field, 2 - ax3, -1)
 		b_field = np.moveaxis(b_field, 2 - ax3, -1)
-	# Generate contour plot of overall charge density distribution
-	overall_charge_density = np.zeros_like(space[0])
-	for rho in list_charge_densities:
-		X, Y = space[ax1], space[ax2]
-		overall_charge_density += np.vectorize(rho)(z, Y, X)
+		overall_charge_density = np.moveaxis(overall_charge_density, 1 - ax3, -1)
+
+	# Generate field plots
 	for field_name, field in zip(["e", "b"], [e_field, b_field]):
 		config_name = f"{field_name}-field"
 		if config[config_name]["plot"]:
