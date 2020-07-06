@@ -88,10 +88,12 @@ def visualize_fields(config):
 	Args:
 		config: Environment configuration
 	"""
+	ax3 = config["plane"]["axis"]
+	z = config["plane"]["coordinate"]
 	axes = []
 	for i in range(3):
-		if i == config["plane"]["axis"]:
-			axes.append([config["plane"]["coordinate"]])
+		if i == ax3:
+			axes.append([z])
 		else:
 			x_min, x_max = config["plot-bounds"]["min"][i], config["plot-bounds"]["max"][i]
 			x_min -= config["plot-margins"][i]
@@ -105,7 +107,7 @@ def visualize_fields(config):
 		0: (1, 2),
 		1: (0, 2),
 		2: (0, 1)
-	}[config["plane"]["axis"]]
+	}[ax3]
 	e_field, b_field = np.zeros_like(space), np.zeros_like(space)
 
 	if "charges" in config:
@@ -114,7 +116,7 @@ def visualize_fields(config):
 			E = np.zeros_like(x)
 			for charge in charges:
 				s = (x.T - charge[1:]).T
-				E += charge[0] * s / np.linalg.norm(s, axis=0) ** 3
+				E += charge[0] * s / (np.linalg.norm(s, axis=0) ** 3 + 1e-6)
 			return E
 		e_field += efield_charges(space)
 
@@ -128,6 +130,10 @@ def visualize_fields(config):
 				rho = construct_function(eval_safety, density_func["func"])
 			list_charge_densities.append(rho)
 
+	if ax3 != 2:
+		ax1, ax2 = ax2, ax1
+		e_field = np.moveaxis(e_field, 2 - ax3, -1)
+		b_field = np.moveaxis(b_field, 2 - ax3, -1)
 	for field_name, field in zip(["e", "b"], [e_field, b_field]):
 		config_name = f"{field_name}-field"
 		if config[config_name]["plot"]:
@@ -144,21 +150,19 @@ def visualize_fields(config):
 			# Plot charge densities
 			for rho in list_charge_densities:
 				X, Y = space[ax1], space[ax2]
-				Z = config["plane"]["coordinate"]
-				density = np.vectorize(rho)(Z, Y, X)
-				print(density.shape)
-				plt.contourf(axes[ax1], axes[ax2], density.T[0].T, colors='red', levels=[.5, .6])
+				density = np.vectorize(rho)(z, Y, X)
+				plt.contourf(axes[ax1], axes[ax2], density.T[0].T, cmap=plt.cm.Reds)
 
 			# Plot field
 			fx, fy = field[ax1].T[0].T, field[ax2].T[0].T
-			color = 2 * np.log(np.hypot(fx, fy))
+			color = 2 * np.log(np.hypot(fx, fy) + 1e-6)
 			try:
 				plt.streamplot(axes[ax1], axes[ax2], fx, fy, color=color, cmap=plt.get_cmap(config["colormap"]))
 			except ValueError as e:
 				print(f"Failed to plot {render_name}: {e}")
 
 			# Plot labels
-			plt.title(render_name)
+			plt.title(f"{render_name} ({axis_names[ax3]} = {z})")
 			plt.xlabel(axis_names[ax1])
 			plt.ylabel(axis_names[ax2])
 
