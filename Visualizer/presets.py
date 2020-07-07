@@ -42,9 +42,9 @@ def offset_var(var, offset):
 		return lambda z, y, x: var(z + offset[2], y + offset[1], x + offset[0])
 	return var
 
-def delta(variable, value, offset):
+def delta(variable, value, offset, tolerance):
 	var = offset_var(get_variable(variable), offset)
-	return lambda z, y, x: 100 if nl.norm(var(z, y, x) - value) < 0.01 else 0
+	return lambda z, y, x: 100 if nl.norm(var(z, y, x) - value) < tolerance else 0
 
 def heaviside(variable, value, offset, reverse):
 	var = offset_var(get_variable(variable), offset)
@@ -59,8 +59,9 @@ def get_preset(density_func):
 	var = density_func["var"]
 	val = density_func["value"]
 	offset = density_func.get("offset", 0)
+	tolerance = density_func.get("tol", 0.15)
 	if func == PRESET_DELTA:
-		d = delta(var, val, offset)
+		d = delta(var, val, offset, tolerance)
 		return lambda z, y, x: scale * d(z, y, x)
 	elif func in [PRESET_HEAVISIDE, PRESET_REVERSE_HEAVISIDE]:
 		h = heaviside(var, val, offset, func == PRESET_REVERSE_HEAVISIDE)

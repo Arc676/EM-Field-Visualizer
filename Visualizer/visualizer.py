@@ -21,7 +21,6 @@ import json
 
 import evaluation as safe_eval
 import presets
-import simps3
 
 # Command line parameters
 output_files = {"e-field": None, "b-field": None}
@@ -126,8 +125,26 @@ def visualize_fields(config):
 	if "charge-densities" in config:
 		densities = config["charge-densities"]
 		for density_func in densities:
+			ax, ay, az = axes[0][0], axes[1][0], axes[2][0]
+			bx, by, bz = axes[0][-1], axes[1][-1], axes[2][-1]
+			if ax == bx:
+				ax, bx = ay, by
+			elif ay == by:
+				ay, by = ax, bx
+			elif az == bz:
+				az, bz = ax, bx
 			if density_func["preset"]:
 				rho = presets.get_preset(density_func)
+				if density_func["func"] == presets.PRESET_DELTA and
+					density_func["var"] in ["x", "y", "z"]:
+					x, t = density_func["value"], density_func.get("tol", 0.15) + 0.1
+					a, b = x - t, x + t
+					if density_func["var"] == "x":
+						ax, bx = a, b
+					elif density_func["var"] == "y":
+						ay, by = a, b
+					else:
+						az, bz = a, b
 			else:
 				rho = construct_function(eval_safety, density_func["func"])
 			list_charge_densities.append(rho)
@@ -144,23 +161,12 @@ def visualize_fields(config):
 						epsabs=0.5
 					)[0] if rho(z, y, x) == 0 else 0
 				)
-			ax, ay, az = axes[0][0], axes[1][0], axes[2][0]
-			bx, by, bz = axes[0][-1], axes[1][-1], axes[2][-1]
-			if ax == bx:
-				ax, bx = ay, by
-			elif ay == by:
-				ay, by = ax, bx
-			elif az == bz:
-				az, bz = ax, bx
-			for axis in reversed(range(3)):
-				print(space.shape)
-				print(axis)
+			for axis in range(3):
 				e_field[axis] += grid_integral(
 					integrand,
 					ax, bx, ay, by, az, bz,
 					axis
 				)(space[2], space[1], space[0])
-				print(e_field[axis])
 
 	# Determine overall charge density distribution
 	overall_charge_density = np.zeros_like(space[0])
