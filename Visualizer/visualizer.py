@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
-from scipy.integrate import tplquad
+from scipy.integrate import tplquad, dblquad, quad
 import matplotlib.pyplot as plt
 import argparse
 import json
@@ -90,11 +90,11 @@ def visualize_fields(config):
 		config: Environment configuration
 	"""
 	ax3 = config["plane"]["axis"]
-	z = config["plane"]["coordinate"]
+	Z = config["plane"]["coordinate"]
 	axes = []
 	for i in range(3):
 		if i == ax3:
-			axes.append([z])
+			axes.append([Z])
 		else:
 			x_min, x_max = config["plot-bounds"]["min"][i], config["plot-bounds"]["max"][i]
 			x_min -= config["plot-margins"][i]
@@ -125,48 +125,103 @@ def visualize_fields(config):
 	if "charge-densities" in config:
 		densities = config["charge-densities"]
 		for density_func in densities:
-			ax, ay, az = axes[0][0], axes[1][0], axes[2][0]
-			bx, by, bz = axes[0][-1], axes[1][-1], axes[2][-1]
-			if ax == bx:
-				ax, bx = ay, by
-			elif ay == by:
-				ay, by = ax, bx
-			elif az == bz:
-				az, bz = ax, bx
 			if density_func["preset"]:
 				rho = presets.get_preset(density_func)
-				if density_func["func"] == presets.PRESET_DELTA and
-					density_func["var"] in ["x", "y", "z"]:
-					x, t = density_func["value"], density_func.get("tol", 0.15) + 0.1
-					a, b = x - t, x + t
-					if density_func["var"] == "x":
-						ax, bx = a, b
-					elif density_func["var"] == "y":
-						ay, by = a, b
-					else:
-						az, bz = a, b
 			else:
 				rho = construct_function(eval_safety, density_func["func"])
 			list_charge_densities.append(rho)
-			def integrand(z, y, x, Xx, Xy, Xz, axis):
+			def integrand(z, y, x, Xz, Xy, Xx, axis):
 				X = np.array([Xx, Xy, Xz])
 				Y = np.array([x, y, z])
 				v = X - Y
 				return rho(z, y, x) * v[axis] / (np.linalg.norm(v) ** 3 + 1e-6)
-			def grid_integral(f, x0, x1, y0, y1, z0, z1, *args):
-				return np.vectorize(
-					lambda z, y, x: tplquad(
-						f, x0, x1, y0, y1, z0, z1,
-						args=(z, y, x) + args,
-						epsabs=0.5
-					)[0] if rho(z, y, x) == 0 else 0
-				)
-			for axis in range(3):
-				e_field[axis] += grid_integral(
-					integrand,
-					ax, bx, ay, by, az, bz,
-					axis
-				)(space[2], space[1], space[0])
+			def integrand2(y, x, Xz, Xy, Xx, axis, z, axis1, axis2, axis3):
+				Y = np.empty(3)
+				Y[axis1] = x
+				Y[axis2] = y
+				Y[axis3] = z
+				return integrand(Y[2], Y[1], Y[0], Xz, Xy, Xx, axis)
+			def integrand1(x, Xz, Xy, Xx, axis, y, z, axis1, axis2, axis3):
+				Y = np.empty(3)
+				Y[axis1] = x
+				Y[axis2] = y
+				Y[axis3] = z
+				return integrand(Y[2], Y[1], Y[0], Xz, Xy, Xx, axis)
+			def grid_integral(f, *bounds, args=(), dim=3):
+				if dim == 3:
+					return np.vectorize(
+						lambda z, y, x: tplquad(
+							f, *bounds,
+							args=(z, y, x, *args)
+						)[0] if rho(z, y, x) == 0 else 0
+					)
+				elif dim == 2:
+					return np.vectorize(
+						lambda z, y, x: dblquad(
+							f, *bounds,
+							args=(z, y, x, *args)
+						)[0]
+					)
+				elif dim == 1:
+					return np.vectorize(
+						lambda z, y, x: quad(
+							f, *bounds,
+							args=(z, y, x, *args)
+						)[0]
+					)
+			if density_func["func"] == presets.PRESET_DELTA and \
+					density_func["var"] in ["x", "y", "z"]:
+				val = density_func["value"]
+				axis1, axis2, delAxis = {
+					("x", 0): (1,2,0),
+					("x", 1): (2,1,0),
+					("x", 2): (1,2,0),
+					("y", 0): (2,0,1),
+					("y", 1): (0,2,1),
+					("y", 2): (0,2,1),
+					("z", 0): (1,0,2),
+					("z", 1): (0,1,2),
+					("z", 2): (0,1,2)
+				}[(density_func["var"], ax3)]
+				ax, ay = axes[axis1][0], axes[axis2][0]
+				bx, by = axes[axis1][-1], axes[axis2][-1]
+				for axis in range(3):
+					print(axis)
+					if axis == ax3:
+						continue
+					if delAxis == ax3:
+						# Technically this should never come up
+						# because the field is parallel to the
+						# ignored axis
+						e_field[axis] += grid_integral(
+							integrand2,
+							ax, bx, ay, by,
+							args=(axis, val, axis1, axis2, delAxis), dim=2
+						)(space[2], space[1], space[0])
+					else:
+						e_field[axis] += grid_integral(
+							integrand1,
+							ax, bx,
+							args=(axis, val, Z, axis1, delAxis, axis2),
+							dim=1
+						)(space[2], space[1], space[0])
+			else:
+				ax, ay, az = axes[0][0], axes[1][0], axes[2][0]
+				bx, by, bz = axes[0][-1], axes[1][-1], axes[2][-1]
+				if ax == bx:
+					ax, bx = ay, by
+				elif ay == by:
+					ay, by = ax, bx
+				elif az == bz:
+					az, bz = ax, bx
+				for axis in range(3):
+					if axis == ax3:
+						continue
+					e_field[axis] += grid_integral(
+						integrand,
+						ax, bx, ay, by, az, bz,
+						args=(axis,)
+					)(space[2], space[1], space[0])
 
 	# Determine overall charge density distribution
 	overall_charge_density = np.zeros_like(space[0])
@@ -205,7 +260,7 @@ def visualize_fields(config):
 				print(f"Failed to plot {render_name}: {e}")
 
 			# Plot labels
-			plt.title(f"{render_name} ({axis_names[ax3]} = {z})")
+			plt.title(f"{render_name} ({axis_names[ax3]} = {Z})")
 			plt.xlabel(axis_names[ax1])
 			plt.ylabel(axis_names[ax2])
 
