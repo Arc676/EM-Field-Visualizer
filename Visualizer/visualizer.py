@@ -186,7 +186,6 @@ def visualize_fields(config):
 				ax, ay = axes[axis1][0], axes[axis2][0]
 				bx, by = axes[axis1][-1], axes[axis2][-1]
 				for axis in range(3):
-					print(axis)
 					if axis == ax3:
 						continue
 					if delAxis == ax3:
@@ -224,7 +223,8 @@ def visualize_fields(config):
 					)(space[2], space[1], space[0])
 
 	# Determine overall charge density distribution
-	overall_charge_density = np.zeros_like(space[0])
+	if len(list_charge_densities) > 0:
+		overall_charge_density = np.zeros_like(space[0])
 	for rho in list_charge_densities:
 		overall_charge_density += np.vectorize(rho)(space[2], space[1], space[0])
 
@@ -245,11 +245,12 @@ def visualize_fields(config):
 			if "charges" in config:
 				for charge in config["charges"]:
 					xy = (charge[1 + ax1], charge[1 + ax2])
-					plt.plot(*xy, 'ro')
+					plt.plot(*xy, 'ro', color=("red" if charge[0] > 0 else "blue"))
 					plt.annotate(f"{charge[0]} C", xy=xy, xytext=(10,5), ha='right', textcoords='offset points')
 
 			# Plot charge densities
-			plt.contourf(axes[ax1], axes[ax2], overall_charge_density.T[0].T, cmap=plt.cm.Reds)
+			if len(list_charge_densities) > 0:
+				plt.contourf(axes[ax1], axes[ax2], overall_charge_density.T[0].T, cmap=plt.cm.bwr)
 
 			# Plot field
 			fx, fy = field[ax1].T[0].T, field[ax2].T[0].T
