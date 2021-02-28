@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (C) 2020 Arc676/Alessandro Vinciguerra <alesvinciguerra@gmail.com>
+# Copyright (C) 2020-1 Arc676/Alessandro Vinciguerra <alesvinciguerra@gmail.com>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -99,7 +99,7 @@ def visualize_fields(config):
 			x_min, x_max = config["plot-bounds"]["min"][i], config["plot-bounds"]["max"][i]
 			x_min -= config["plot-margins"][i]
 			x_max += config["plot-margins"][i]
-			axis = np.linspace(x_min, x_max, config["resolution"] * (x_max - x_min))
+			axis = np.linspace(x_min, x_max, config["resolution"] * int(x_max - x_min))
 			axes.append(axis)
 	space = np.array(np.meshgrid(*axes))
 
