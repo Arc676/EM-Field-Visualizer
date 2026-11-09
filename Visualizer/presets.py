@@ -12,6 +12,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+import numpy as np
 import numpy.linalg as nl
 
 PRESET_DELTA = 0
@@ -33,9 +34,9 @@ def get_variable(var):
 	elif var == "rc":
 		return lambda z, y, x: norm(x, y)
 	elif var == "theta":
-		return lambda z, y, x: np.acos(z / norm(x, y, z))
+		return lambda z, y, x: np.arccos(z / norm(x, y, z))
 	elif var == "phi":
-		return lambda z, y, x: np.acos(x / norm(x, y))
+		return lambda z, y, x: np.arctan2(y, x)
 
 def offset_var(var, offset):
 	if offset != 0:
