@@ -232,7 +232,8 @@ def visualize_fields(config):
 		ax1, ax2 = ax2, ax1
 		e_field = np.moveaxis(e_field, 2 - ax3, -1)
 		b_field = np.moveaxis(b_field, 2 - ax3, -1)
-		overall_charge_density = np.moveaxis(overall_charge_density, 1 - ax3, -1)
+		if len(list_charge_densities) > 0:
+			overall_charge_density = np.moveaxis(overall_charge_density, 1 - ax3, -1)
 
 	# Generate field plots
 	for field_name, field in zip(["e", "b"], [e_field, b_field]):

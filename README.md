@@ -25,8 +25,8 @@ Several preset functions are available for defining continuous charge and curren
 | x, y, z | Cartesian coordinates |
 | r | Spherical radius |
 | rc | Cylindrical radius |
-| theta | Azimuthal angle |
-| phi | Polar angle |
+| theta | Polar angle |
+| phi | Azimuthal angle |
 
 Note that it is not possible to use a preset function to compare a combination of variables to a given value. In addition, the value against which the variable is compared must be a literal and not a function. More complex density functions can be implemented by the user, although allowing the evaluation of arbitrary code carries a security risk (see section **Custom Functions**).
 
